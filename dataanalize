@@ -1,0 +1,77 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import seaborn as sns
+
+
+#skit_learnを使った単回帰分析
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+#ローカルファイルをアップロード
+from google.colab import files
+uploaded = files.upload()
+
+df = pd.read_csv('baseball_3.csv')
+df = df.drop(0, axis=0)
+df["年俸"]=df["年俸"].str.extract('(.+)万円', expand=True)
+df = df.drop("名前", axis=1)
+
+
+for i in range(len(df)):
+  df["年俸"][i+1]=int(float(df["年俸"][i+1].replace(',', '').strip("'")))
+df.head()
+
+x = df["敗北"]
+y = df["年俸"]
+x=pd.DataFrame(x)
+y=pd.DataFrame(y)
+model_lr=LinearRegression()
+lin_reg = model_lr.fit(x, y)
+
+plt.plot(x, y, 'o')
+plt.plot(pd.DataFrame(x), model_lr.predict(pd.DataFrame(x)), linestyle="solid")
+plt.show()
+
+print('モデル関数の回帰変数 w1: %.3f' %lin_reg.coef_)
+print('モデル関数の切片 w2: %.3f' %lin_reg.intercept_)
+print('y= %.3fx + %.3f' % (lin_reg.coef_ , lin_reg.intercept_))
+print('決定係数 R^2： ', model_lr.score(x, y))
+
+#正規化を使用(standard)
+x=df.drop("年俸",axis=1).values
+baseball_p_stand=df.apply(lambda x: (x - np.min(x)) / (max(x)-min(x)))
+baseball_p_stand.head()
+
+#年収以外のデータを格納(不偏標準偏差を使用)
+#x=baseball_p.drop("年俸",axis=1).values
+baseball_p=baseball_p.drop("年俸",axis=1)
+#年収以外のデータを格納(正規化を使用)
+#x=baseball_p_stand.drop("年俸",axis=1).values
+#y=df["年俸"].values
+y=df["年俸"].values
+#予測モデルを作成
+lin_reg = model_lr.fit(x, y)
+# 偏回帰係数
+print(pd.DataFrame({"Name":baseball_p.columns,
+                    "Coefficients":np.abs(lin_reg.coef_ )}).sort_values(by='Coefficients') )
+# 切片 (誤差)
+print(lin_reg.intercept_)
+
+
+
+#来年の年収を予想
+#(["名前","年俸","勝利","敗北","勝率","被安打","被本塁打","奪三振","自責点","投球回"])
+pre_data=["菅野",11,0,0.647,138,20,120,59,136]
+def predict(pre_data):
+  data=pre_data
+  coef=np.abs(lin_reg.coef_ )
+  print(coef)
+  pre_money=0
+  
+  for i in range(8):
+    pre_money+=data[i+1]*coef[i]
+  pre_money=pre_money+lin_reg.intercept_
+  return pre_money
+
+predict(pre_data)
