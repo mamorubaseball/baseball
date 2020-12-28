@@ -1,0 +1,100 @@
+from bs4 import BeautifulSoup
+import  urllib.request as req
+
+import pandas as pd
+import os
+import csv
+import datetime
+import string
+from typing import List
+import os
+#巨人の投手の名前と年俸を取得
+#チームのURL
+
+def get_url()->string:
+    url="https://baseball-data.com/"
+    html=req.urlopen(url)
+    parse_html=BeautifulSoup(html,'html.parser')
+    #print(parse_html)
+
+    team_url_list=[]
+    a_tag=parse_html.find_all("a") 
+    for member_url in a_tag :
+      if member_url.text=="選手一覧":
+        team_url_list.append(member_url.get('href'))
+    return team_url_list
+    
+    year_list=["15/player","16/player","17/player","18/player","19/player","20/player",]
+
+def p_data_money(url,year):
+    year_p_data = url.replace("player",year) + "p.html"
+    html = req.urlopen(year_p_data)
+    parse_html = BeautifulSoup(html, 'html.parser')
+
+    tr=parse_html.find_all("tr")
+
+    list=[]
+    global p_data,p_data_url
+    p_data=[]
+    p_data_url=[]
+    #n;team内の選手の数
+    global n
+    n=len(tr)
+  
+    for i in range(n):
+      td=tr[i].find_all("td")
+      list.append(td)
+      if i >=1:
+        p_data.append([list[i][1].find("a").text.replace('\u3000', ''),list[i][-1].text])
+        p_data_url.append(list[i][1].find("a").get('href'))
+    return p_data,p_data_url
+    
+    global start_p_data
+start_p_data=[]
+
+def get_info_p(p_url,p_data:List):
+  #勝利、敗北、勝率、被安打,被本塁打,奪三振,自責点,防御率,のデータから分析
+  html = req.urlopen(p_url)
+  parse_html = BeautifulSoup(html, 'html.parser')
+  
+  #facter_list={"勝利":a,"敗北":b,"勝率":c,"被安打":d,"被本塁打":e,"奪三振":f,"自責点":g,"防御率":h}
+  game=0
+  win=1
+  lose=2
+  win_per=9
+  ining=11
+  hit=12
+  homerun=13
+  three=17
+  outpoint=21
+  defense=22
+  tr=parse_html.find_all("tbody")[0].find_all("td")
+  # td (th) 要素の値を読み込む
+  # tbody -- tr 直下に th が存在するパターンがあるので
+  # find_all(["td", "th"]) でもok
+  if tr[game].text != "-":
+    ining_ave=float(tr[ining].text)/float(tr[game].text)
+    if ining_ave>5:
+      start_p_data.append([p_data[0],p_data[1],float(tr[1].text),float(tr[2].text),float(tr[win_per].text),float(tr[hit].text),float(tr[homerun].text),float(tr[three].text),float(tr[outpoint].text),float(tr[ining].text)])
+  return start_p_data
+  def info_to_csv(start_p_data):
+  with open('baseball_3.csv', 'w') as f:
+    writer = csv.writer(f)
+    writer.writerow(["名前","年俸","勝利","敗北","勝率","被安打","被本塁打","奪三振","自責点","投球回"])
+    for i in range(len(start_p_data)):
+      writer.writerow([start_p_data[i][0], start_p_data[i][1], start_p_data[i][2],start_p_data[i][3],start_p_data[i][4],start_p_data[i][5],start_p_data[i][6],start_p_data[i][7],start_p_data[i][8],start_p_data[i][9]])
+    #os.remove("baseball_file.csv")
+info_to_csv(start_p_data)
+def all_scraping_to_csv():
+    team_list=get_url()
+    print(team_list)
+    for team in team_list:
+        p_data_money(team)
+        for i in range(n-2):
+          get_info_p(p_data_url[i],p_data[i])
+        info_to_csv(start_p_data)
+        #if get_info_p(p_data_url[i],p_data[i]) is not None:             
+        #team_name_list = ["巨人", "DeNA", "阪神", "広島", "中日", "ヤクルト","西武", "ソフトバンク", "楽天", "ロッテ", "日ハム", "オリックス"]
+        #team_name=team_name_list[index]
+        
+all_scraping_to_csv()
